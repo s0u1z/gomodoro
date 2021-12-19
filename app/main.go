@@ -117,7 +117,7 @@ func layout() *tview.Flex {
 }
 
 func titlebar() *tview.Flex {
-	titleText := tview.NewTextView().SetText("[lime::b]Go Todo [::-]- Pomodoro Task Manager  [red::b]Version[lime::b] 0.0.1").SetDynamicColors(true).SetTextAlign(tview.AlignCenter)
+	titleText := tview.NewTextView().SetText("[lime::b]Gomodoro [::-]- Pomodoro Task Manager  [red::b]Version[lime::b] 0.0.1").SetDynamicColors(true).SetTextAlign(tview.AlignCenter)
 	titlebar := tview.NewFlex().AddItem(titleText, 0, 1, false)
 
 	return titlebar
