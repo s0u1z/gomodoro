@@ -4,9 +4,10 @@ import (
 	"reflect"
 	"unicode"
 
+	"github.com/gomodoro/data"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
-	"github.com/s0u1z/go-todo/data"
 )
 
 var (
