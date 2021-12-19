@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/gomodoro/data"
 	"github.com/rivo/tview"
+	"github.com/s0u1z/gomodoro/data"
 )
 
 var activetask *data.Task

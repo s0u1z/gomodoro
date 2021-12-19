@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"unicode"
 
-	"github.com/gomodoro/data"
+	"github.com/s0u1z/gomodoro/data"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"

@@ -1,4 +1,4 @@
-module github.com/gomodoro
+module github.com/s0u1z/gomodoro
 
 go 1.17
 
