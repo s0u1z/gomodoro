@@ -1,12 +1,17 @@
 package main
 
 import (
+	"log"
 	"reflect"
+
 	"unicode"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/jinzhu/gorm"
+	"github.com/pgavlin/femto"
+	"github.com/pgavlin/femto/runtime"
 	"github.com/rivo/tview"
-	"github.com/s0u1z/go-todo/data"
+	"github.com/s0u1z/gomodoro/models"
 )
 
 var (
@@ -18,29 +23,68 @@ var (
 
 type DetailsUi struct {
 	*tview.Flex
-	details *tview.TextView
-	editor  *tview.TextViewWriter
-	button  *tview.Button
+	details       *tview.TextView
+	detailsEditor *femto.View
+	editor        *tview.TextViewWriter
+	button        *tview.Button
 }
 
 func main() {
 
 	app = tview.NewApplication()
-	detailsui := DetailsUi{
-		Flex:    tview.NewFlex().SetDirection(tview.FlexRow),
-		details: tview.NewTextView(),
-		editor:  &tview.TextViewWriter{},
-		button:  tview.NewButton("Add Details "),
+
+	db, err := models.InitDB()
+	if err != nil {
+		log.Panic(err)
 	}
-	data.Init()
+
+	defer db.Close()
+	detailsui := DetailsUi{
+		Flex:          tview.NewFlex().SetDirection(tview.FlexRow),
+		details:       tview.NewTextView(),
+		detailsEditor: femto.NewView(femto.NewBufferFromString("", "")),
+		editor:        &tview.TextViewWriter{},
+	}
+	detailsui.detailsEditor.SetRuntimeFiles(runtime.Files)
+	detailsui.detailsEditor.SetColorscheme(femto.ParseColorscheme("blue,red"))
+	detailsui.detailsEditor.SetBorder(true)
+	detailsui.detailsEditor.SetBorderColor(tcell.ColorAliceBlue)
+	detailsui.detailsEditor.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if ignoreKeyEvt() {
+			return event
+		}
+		switch event.Key() {
+		case tcell.KeyESC:
+			detailsui.details.SetText(detailsui.detailsEditor.Buf.String())
+			detailsui.AddItem(detailsui.button.SetLabel("Update"), 1, 0, false)
+			detailsui.detailsEditor.End()
+			detailsui.detailsEditor.SetBorderColor(tcell.ColorDarkGrey)
+			app.SetFocus(detailsui.details)
+
+			return nil
+		}
+		return event
+	})
+
+	detailsui.button = tview.NewButton("edit").SetSelectedFunc(func() {
+
+		detailsui.AddItem(detailsui.detailsEditor, 0, 3, false).SetBorder(true).SetTitle("Description")
+		app.SetFocus(detailsui.detailsEditor)
+		detailsui.RemoveItem(detailsui.button)
+
+	})
+
+	detailsui.details.SetBorder(true).SetTitle("Task Details")
+
+	detailsui.AddItem(detailsui.details, 0, 1, false).AddItem(detailsui.button, 1, 0, false)
+
 	footer := tview.NewTextView().SetBorder(true).SetTitle("Navigation")
 
 	timer := tview.NewFlex().SetDirection(tview.FlexRow)
 	timer.AddItem(tview.NewTextView().SetBorder(true).SetTitle("Pomodoro"), 0, 1, false).AddItem(tview.NewTextView().SetBorder(true).SetTitle("Notes"), 0, 1, false)
-	details := detailsui.AddItem(tview.NewBox().SetBorder(true).SetTitle("Description"), 0, 1, false)
 
 	mainlayout = tview.NewGrid().SetRows(4, 0, 4).SetColumns(40, 0, 40).AddItem(titlebar(), 0, 0, 1, 3, 0, 10, false).AddItem(footer, 2, 0, 1, 3, 30, 100, false)
-	mainlayout.AddItem(layout(), 1, 0, 1, 1, 0, 90, false).AddItem(details, 1, 1, 1, 1, 0, 90, false).AddItem(timer, 1, 2, 1, 1, 0, 100, false)
+	mainlayout.AddItem(layout(db), 1, 0, 1, 1, 0, 90, false).AddItem(detailsui, 1, 1, 1, 1, 0, 90, false).AddItem(timer, 1, 2, 1, 1, 0, 100, false)
 	setKeyboardShortcuts()
 
 	if err := app.SetRoot(mainlayout, true).EnableMouse(true).Run(); err != nil {
@@ -107,9 +151,9 @@ func AtArrayPosition(val interface{}, array interface{}) (index int) {
 	return
 }
 
-func layout() *tview.Flex {
+func layout(db *gorm.DB) *tview.Flex {
 
-	appview = NewAppView()
+	appview = NewAppView(db)
 
 	contentlayout = tview.NewFlex().SetDirection(tview.FlexRow).AddItem(appview, 0, 1, false)
 

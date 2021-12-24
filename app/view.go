@@ -5,28 +5,33 @@ import (
 	"strings"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/jinzhu/gorm"
 	"github.com/rivo/tview"
-	"github.com/s0u1z/go-todo/data"
+	"github.com/s0u1z/gomodoro/models"
 )
 
-var activetask *data.Task
+var activetask *models.Task
 
 type AppView struct {
 	*tview.Flex
 
-	tasks    data.Tasks
+	tasks    []*models.Task
 	tasklist *tview.List
 	newtask  *tview.InputField
 
 	taskcount int
 
-	subtasks      data.SubTasks
+	subtasks      []*models.SubTask
 	subtasklits   *tview.List
 	newsubtask    *tview.InputField
-	activesubtask *data.SubTask
+	activesubtask *models.SubTask
+
+	//Init ModelDB
+
+	db *models.ModelDb
 }
 
-func NewAppView() *AppView {
+func NewAppView(db *gorm.DB) *AppView {
 
 	view := AppView{
 
@@ -37,6 +42,7 @@ func NewAppView() *AppView {
 
 		subtasklits: tview.NewList().ShowSecondaryText(false),
 		newsubtask:  makeLightTextInput("New Sub Task [+]"),
+		db:          models.NewModelDB(db),
 	}
 
 	view.tasklist.SetSelectedBackgroundColor(tcell.ColorOrangeRed)
@@ -84,15 +90,13 @@ func (t *AppView) AddNewTask() {
 
 	name := t.newtask.GetText()
 
-	task := data.CreateTask(name)
-
-	err := data.AddTaskToList(*task)
+	_, err := t.db.AddTask(name)
 
 	if err != nil {
 		log.Panic(err)
 	}
 
-	t.tasks, err = data.GetAllTask()
+	t.tasks, err = t.db.AllTask()
 	if err != nil {
 		log.Panic(err)
 	}
@@ -124,14 +128,14 @@ func (t *AppView) ActivateTask(i int) {
 
 	activetask = t.tasks[i]
 
-	t.LoadSubTask(*activetask)
+	t.LoadSubTask(activetask)
 
 	app.SetFocus(t)
 }
 
-func (t *AppView) LoadSubTask(task data.Task) {
+func (t *AppView) LoadSubTask(task *models.Task) {
 
-	subtask, err := data.GetSubTaskByName(task)
+	subtask, err := t.db.GetSubtaskByTask(task)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -154,9 +158,8 @@ func (t *AppView) AddSubTask() {
 
 	activetask := activetask
 
-	subtask := data.CreateSubTask(name)
+	subtask, err := t.db.AddSubtask(name, *activetask)
 
-	err := data.AddSubTask(*subtask, *activetask)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -168,7 +171,7 @@ func (t *AppView) AddSubTask() {
 	t.newsubtask.SetText("")
 }
 
-func (t *AppView) SetSubTask(sub data.SubTasks) {
+func (t *AppView) SetSubTask(sub []*models.SubTask) {
 	t.Clear()
 
 	t.subtasks = sub
@@ -224,7 +227,7 @@ func (t *AppView) AddTaskList() {
 
 	t.taskcount = t.tasklist.GetItemCount()
 
-	t.tasks, err = data.GetAllTask()
+	t.tasks, err = t.db.AllTask()
 	if err != nil {
 		log.Println(err)
 	}
